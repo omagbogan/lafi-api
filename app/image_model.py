@@ -34,7 +34,7 @@ log = logging.getLogger("lafi.image")
 MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "image.pt"
 
 # Catégories que l'application sait afficher aujourd'hui.
-LAFI_CATEGORIES = {"Alimentation", "Mode", "Beauté", "Électronique"}
+LAFI_CATEGORIES = {"Alimentation", "Mode", "Beauté", "Électronique", "Maison", "Bébé"}
 
 # Classe du dataset d'images -> catégorie de l'application (None = pas d'équivalent pour l'instant)
 IMAGE_CATEGORY_MAP = {
@@ -42,8 +42,8 @@ IMAGE_CATEGORY_MAP = {
     "CLOTHING_ACCESSORIES_JEWELLERY": "Mode",
     "BEAUTY_HEALTH": "Beauté",
     "ELECTRONICS": "Électronique",
-    "BABY_PRODUCTS": None,
-    "HOME_KITCHEN_TOOLS": None,
+    "BABY_PRODUCTS": "Bébé",
+    "HOME_KITCHEN_TOOLS": "Maison",
     "HOBBY_ARTS_STATIONERY": None,
     "PET_SUPPLIES": None,
     "SPORTS_OUTDOOR": None,

@@ -25,9 +25,8 @@ log = logging.getLogger("lafi.category")
 
 MODEL_PATH = Path(__file__).resolve().parent.parent / "models" / "category.joblib"
 
-# Catégories que l'application sait afficher aujourd'hui. Ajoute "Maison" et "Bébé"
-# ici (et dans config.CATEGORIES + l'app) le jour où tu veux les proposer.
-LAFI_CATEGORIES = {"Alimentation", "Mode", "Beauté", "Électronique"}
+# Catégories que l'application sait afficher aujourd'hui.
+LAFI_CATEGORIES = {"Alimentation", "Mode", "Beauté", "Électronique", "Maison", "Bébé"}
 
 # Classe fine du modèle (31 classes locales)  ->  catégorie de l'application.
 # None = pas de catégorie équivalente dans Lafi pour l'instant (on garde la classe fine).
@@ -35,7 +34,6 @@ CATEGORY_MAP = {
     # Alimentation
     "Épicerie & condiments": "Alimentation",
     "Boissons & alcools": "Alimentation",
-    "Alimentation & biberons bébé": "Alimentation",
     # Mode
     "Vêtements": "Mode",
     "Chaussures": "Mode",
@@ -60,14 +58,16 @@ CATEGORY_MAP = {
     "Caméras & surveillance": "Électronique",
     "Électronique auto": "Électronique",
     "Électronique - autres": "Électronique",
-    # Pas encore dans Lafi (maison, bébé) : à ajouter plus tard
-    "Électroménager & ventilation": None,
-    "Cuisine & art de la table": None,
-    "Rangement, déco & éclairage": None,
-    "Outillage & bricolage": None,
-    "Produits ménagers": None,
-    "Puériculture & jouets bébé": None,
-    "Couches & soins bébé": None,
+    # Maison
+    "Électroménager & ventilation": "Maison",
+    "Cuisine & art de la table": "Maison",
+    "Rangement, déco & éclairage": "Maison",
+    "Outillage & bricolage": "Maison",
+    "Produits ménagers": "Maison",
+    # Bébé
+    "Alimentation & biberons bébé": "Bébé",
+    "Puériculture & jouets bébé": "Bébé",
+    "Couches & soins bébé": "Bébé",
 }
 
 # Repli simple si le modèle n'est pas disponible
@@ -80,6 +80,10 @@ KEYWORDS = {
                "mèche", "meche", "maquillage", "rouge a levres", "vernis", "lotion"],
     "Électronique": ["telephone", "smartphone", "iphone", "samsung", "tecno", "infinix", "tablette", "ecouteur",
                      "chargeur", "cable", "powerbank", "enceinte", "television", "tv", "ordinateur", "laptop"],
+    "Maison": ["ventilateur", "mixeur", "casserole", "poele", "assiette", "drap", "rideau", "matelas",
+               "lampe", "ampoule", "fer a repasser", "seau", "balai", "serpilliere"],
+    "Bébé": ["biberon", "couche", "couches", "pampers", "lingette", "lait de croissance", "tetine",
+             "poussette", "bavoir", "body bebe", "jouet bebe"],
 }
 
 _STATE = {"loaded": False, "bundle": None, "keep": None, "names": None}
