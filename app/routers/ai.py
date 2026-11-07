@@ -1,10 +1,14 @@
 from typing import Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
-from sqlmodel import SQLModel
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlmodel import Session, SQLModel
 
+from ..agent import run_agent
 from ..category_model import predict_category
+from ..db import get_session
+from ..geo import DEFAULT_LAT, DEFAULT_LNG
 from ..image_model import predict_image
+from ..models import ArticleOut
 
 router = APIRouter(prefix="/ai")
 
@@ -60,3 +64,31 @@ def category_from_image(file: UploadFile = File(...)):
         return predict_image(data)
     except ValueError as error:
         raise HTTPException(422, str(error))
+
+
+# ---------- Assistant / Agent IA conversationnel (Bloc 4) ----------
+
+class AssistantRequest(SQLModel):
+    message: str
+    lat: float = DEFAULT_LAT
+    lng: float = DEFAULT_LNG
+
+
+class AssistantResponse(SQLModel):
+    reply: str
+    recommended_articles: list[ArticleOut] = []
+    intent: str
+    source: str = "agent-local"
+    accepte: bool = True
+
+
+@router.post("/assistant", response_model=AssistantResponse)
+def ask_assistant(data: AssistantRequest, session: Session = Depends(get_session)):
+    result = run_agent(data.message, session, data.lat, data.lng)
+    return AssistantResponse(
+        reply=result["reply"],
+        recommended_articles=result["recommended_articles"],
+        intent=result["intent"],
+        source="agent-local",
+        accepte=True,
+    )
