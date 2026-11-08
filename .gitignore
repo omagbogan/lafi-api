@@ -3,3 +3,4 @@ __pycache__/
 lafi.db
 uploads/
 models/
+.env

@@ -11,9 +11,12 @@ from ..models import (
     CustomerOut,
     MerchantLogin,
     MerchantRegister,
+    OtpSend,
+    OtpVerify,
     Shop,
     ShopOut,
 )
+from ..otp import send_otp, verify_otp
 
 router = APIRouter(prefix="/auth")
 
@@ -114,3 +117,28 @@ def login_merchant(data: MerchantLogin, session: Session = Depends(get_session))
     if not shop:
         raise HTTPException(404, "Aucune boutique trouvée avec ce numéro de téléphone.")
     return shop
+
+
+# ---------- Vérification SMS OTP (Twilio Verify) ----------
+
+@router.post("/otp/send")
+def request_otp(data: OtpSend):
+    cleaned = clean_phone(data.phone)
+    result = send_otp(cleaned)
+    return {"status": "ok", "message": "Code SMS envoyé avec succès.", **result}
+
+
+@router.post("/otp/verify")
+def check_otp(data: OtpVerify):
+    cleaned = clean_phone(data.phone)
+    code = data.code.strip()
+    if not code or len(code) != 6:
+        raise HTTPException(422, "Le code doit comporter exactement 6 chiffres.")
+
+    is_valid = verify_otp(cleaned, code)
+    if not is_valid:
+        raise HTTPException(400, "Code de vérification incorrect ou expiré.")
+
+    return {"status": "approved", "valid": True, "phone": cleaned}
+
+

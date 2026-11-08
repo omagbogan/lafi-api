@@ -192,3 +192,13 @@ class MerchantRegister(SQLModel):
 
 class MerchantLogin(SQLModel):
     phone: str
+
+
+class OtpSend(SQLModel):
+    phone: str
+
+
+class OtpVerify(SQLModel):
+    phone: str
+    code: str
+
