@@ -74,12 +74,14 @@ def register_merchant(data: MerchantRegister, session: Session = Depends(get_ses
     phone = clean_phone(data.phone)
     owner_name = data.owner_name.strip()
     shop_name = data.shop_name.strip()
-    address = (data.address or "Cocody, Abidjan").strip()
+    address = data.address.strip()
 
     if not owner_name:
         raise HTTPException(422, "Le nom du propriétaire est obligatoire.")
     if not shop_name:
         raise HTTPException(422, "Le nom de la boutique est obligatoire.")
+    if not address:
+        raise HTTPException(422, "L'adresse ou le quartier de la boutique est obligatoire.")
 
     # Vérifier si une boutique existe déjà avec ce téléphone
     statement = select(Shop).where(Shop.phone == phone)

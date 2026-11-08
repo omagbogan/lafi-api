@@ -185,7 +185,7 @@ class MerchantRegister(SQLModel):
     owner_name: str
     shop_name: str
     phone: str
-    address: Optional[str] = None
+    address: str
     lat: Optional[float] = None
     lng: Optional[float] = None
 
