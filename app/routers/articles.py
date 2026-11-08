@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel import Session, col, select
 
 from ..config import CATEGORIES, MY_SHOP_ID
@@ -92,13 +92,27 @@ def get_article(
 # ---------- Côté commerçant ----------
 
 @router.get("/shops/me", response_model=ShopOut)
-def my_shop(session: Session = Depends(get_session)):
-    return session.get(Shop, MY_SHOP_ID)
+def my_shop(
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
+    shop = session.get(Shop, target_shop_id)
+    if shop is None:
+        raise HTTPException(404, "Boutique introuvable")
+    return shop
 
 
 @router.patch("/shops/me", response_model=ShopOut)
-def update_my_shop(data: ShopUpdate, session: Session = Depends(get_session)):
-    shop = session.get(Shop, MY_SHOP_ID)
+def update_my_shop(
+    data: ShopUpdate,
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
+    shop = session.get(Shop, target_shop_id)
+    if shop is None:
+        raise HTTPException(404, "Boutique introuvable")
     shop.is_open = data.is_open
     session.add(shop)
     session.commit()
@@ -107,28 +121,48 @@ def update_my_shop(data: ShopUpdate, session: Session = Depends(get_session)):
 
 
 @router.get("/shops/me/articles", response_model=list[ArticleOut])
-def my_articles(session: Session = Depends(get_session)):
-    shop = session.get(Shop, MY_SHOP_ID)
+def my_articles(
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
+    shop = session.get(Shop, target_shop_id)
+    if shop is None:
+        raise HTTPException(404, "Boutique introuvable")
     articles = session.exec(
-        select(Article).where(Article.shop_id == MY_SHOP_ID).order_by(col(Article.created_at).desc())
+        select(Article).where(Article.shop_id == target_shop_id).order_by(col(Article.created_at).desc())
     ).all()
     return [to_out(a, shop, DEFAULT_LAT, DEFAULT_LNG) for a in articles]
 
 
 @router.post("/articles", response_model=ArticleOut, status_code=201)
-def create_article(data: ArticleCreate, session: Session = Depends(get_session)):
+def create_article(
+    data: ArticleCreate,
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
+    shop = session.get(Shop, target_shop_id)
+    if shop is None:
+        raise HTTPException(404, "Boutique introuvable")
     check_category(data.category)
-    article = Article(shop_id=MY_SHOP_ID, **data.model_dump())
+    article = Article(shop_id=target_shop_id, **data.model_dump())
     session.add(article)
     session.commit()
     session.refresh(article)
-    return to_out(article, session.get(Shop, MY_SHOP_ID), DEFAULT_LAT, DEFAULT_LNG)
+    return to_out(article, shop, DEFAULT_LAT, DEFAULT_LNG)
 
 
 @router.patch("/articles/{article_id}", response_model=ArticleOut)
-def update_article(article_id: int, data: ArticleUpdate, session: Session = Depends(get_session)):
+def update_article(
+    article_id: int,
+    data: ArticleUpdate,
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
     article = session.get(Article, article_id)
-    if article is None or article.shop_id != MY_SHOP_ID:
+    if article is None or article.shop_id != target_shop_id:
         raise HTTPException(404, "Article introuvable")
     check_category(data.category)
     for key, value in data.model_dump(exclude_unset=True).items():
@@ -136,4 +170,4 @@ def update_article(article_id: int, data: ArticleUpdate, session: Session = Depe
     session.add(article)
     session.commit()
     session.refresh(article)
-    return to_out(article, session.get(Shop, MY_SHOP_ID), DEFAULT_LAT, DEFAULT_LNG)
+    return to_out(article, session.get(Shop, target_shop_id), DEFAULT_LAT, DEFAULT_LNG)

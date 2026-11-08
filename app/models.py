@@ -13,10 +13,21 @@ def now_ms() -> int:
 class Shop(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    phone: str
+    phone: str = Field(index=True)
     lat: float
     lng: float
     is_open: bool = True
+    owner_name: Optional[str] = None
+    address: Optional[str] = None
+
+
+class Customer(SQLModel, table=True):
+    __tablename__ = "customers"
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    phone: str = Field(index=True, unique=True)
+    address: str
+    created_at: int = Field(default_factory=now_ms)
 
 
 class Article(SQLModel, table=True):
@@ -42,6 +53,10 @@ class Order(SQLModel, table=True):
     delivery_fee: int
     total: int
     status: str = "pending"
+    customer_id: Optional[int] = Field(default=None, foreign_key="customers.id", index=True)
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_address: Optional[str] = None
     created_at: int = Field(default_factory=now_ms)
 
 
@@ -62,6 +77,8 @@ class ShopOut(SQLModel):
     name: str
     phone: str
     is_open: bool
+    owner_name: Optional[str] = None
+    address: Optional[str] = None
 
 
 class ShopUpdate(SQLModel):
@@ -112,6 +129,10 @@ class OrderItemIn(SQLModel):
 class OrderCreate(SQLModel):
     mode: Literal["pickup", "yango"]
     items: list[OrderItemIn] = Field(min_length=1)
+    customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_address: Optional[str] = None
 
 
 class OrderItemOut(SQLModel):
@@ -130,9 +151,44 @@ class OrderOut(SQLModel):
     delivery_fee: int
     total: int
     status: str
+    customer_id: Optional[int] = None
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    customer_address: Optional[str] = None
     created_at: int
     items: list[OrderItemOut]
 
 
 class StatusUpdate(SQLModel):
     status: Literal["accepted", "refused"]
+
+
+class CustomerOut(SQLModel):
+    id: int
+    name: str
+    phone: str
+    address: str
+    created_at: int
+
+
+class CustomerCreate(SQLModel):
+    name: str
+    phone: str
+    address: str
+
+
+class CustomerLogin(SQLModel):
+    phone: str
+
+
+class MerchantRegister(SQLModel):
+    owner_name: str
+    shop_name: str
+    phone: str
+    address: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+
+class MerchantLogin(SQLModel):
+    phone: str

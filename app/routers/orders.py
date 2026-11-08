@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlmodel import Session, col, select
 
 from ..config import DELIVERY_FEE, MY_SHOP_ID
@@ -23,12 +25,16 @@ def build_out(session: Session, order: Order) -> OrderOut:
     return OrderOut(
         id=order.id,
         shop_id=order.shop_id,
-        shop=shop.name,
+        shop=shop.name if shop else "Boutique",
         mode=order.mode,
         subtotal=order.subtotal,
         delivery_fee=order.delivery_fee,
         total=order.total,
         status=order.status,
+        customer_id=order.customer_id,
+        customer_name=order.customer_name,
+        customer_phone=order.customer_phone,
+        customer_address=order.customer_address,
         created_at=order.created_at,
         items=[
             OrderItemOut(article_id=line.article_id, name=line.name, price=line.price, qty=line.qty)
@@ -62,7 +68,17 @@ def create_order(data: OrderCreate, session: Session = Depends(get_session)):
     subtotal = sum(article.price * qty for article, qty in lines)
     fee = DELIVERY_FEE if data.mode == "yango" else 0
 
-    order = Order(shop_id=shop.id, mode=data.mode, subtotal=subtotal, delivery_fee=fee, total=subtotal + fee)
+    order = Order(
+        shop_id=shop.id,
+        mode=data.mode,
+        subtotal=subtotal,
+        delivery_fee=fee,
+        total=subtotal + fee,
+        customer_id=data.customer_id,
+        customer_name=data.customer_name,
+        customer_phone=data.customer_phone,
+        customer_address=data.customer_address,
+    )
     session.add(order)
     session.commit()
     session.refresh(order)
@@ -83,18 +99,36 @@ def get_order(order_id: int, session: Session = Depends(get_session)):
     return build_out(session, order)
 
 
-@router.get("/shops/me/orders", response_model=list[OrderOut])
-def my_orders(session: Session = Depends(get_session)):
+@router.get("/customers/{customer_id}/orders", response_model=list[OrderOut])
+def customer_orders(customer_id: int, session: Session = Depends(get_session)):
     orders = session.exec(
-        select(Order).where(Order.shop_id == MY_SHOP_ID).order_by(col(Order.created_at).desc())
+        select(Order).where(Order.customer_id == customer_id).order_by(col(Order.created_at).desc())
+    ).all()
+    return [build_out(session, order) for order in orders]
+
+
+@router.get("/shops/me/orders", response_model=list[OrderOut])
+def my_orders(
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
+    orders = session.exec(
+        select(Order).where(Order.shop_id == target_shop_id).order_by(col(Order.created_at).desc())
     ).all()
     return [build_out(session, order) for order in orders]
 
 
 @router.patch("/orders/{order_id}/status", response_model=OrderOut)
-def set_status(order_id: int, data: StatusUpdate, session: Session = Depends(get_session)):
+def set_status(
+    order_id: int,
+    data: StatusUpdate,
+    x_shop_id: Optional[int] = Header(default=None),
+    session: Session = Depends(get_session),
+):
+    target_shop_id = x_shop_id or MY_SHOP_ID
     order = session.get(Order, order_id)
-    if order is None or order.shop_id != MY_SHOP_ID:
+    if order is None or order.shop_id != target_shop_id:
         raise HTTPException(404, "Commande introuvable")
     if order.status != "pending":
         raise HTTPException(409, "Cette commande a déjà été traitée")

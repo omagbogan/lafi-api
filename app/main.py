@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from .config import UPLOAD_DIR
 from .db import engine, init_db
-from .routers import ai, articles, orders, uploads
+from .routers import ai, articles, auth, orders, uploads
 from .seed import seed
 
 from .category_model import load_model
@@ -36,6 +36,7 @@ app.add_middleware(
 
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+app.include_router(auth.router)
 app.include_router(articles.router)
 app.include_router(orders.router)
 app.include_router(uploads.router)
