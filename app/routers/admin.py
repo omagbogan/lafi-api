@@ -64,6 +64,29 @@ class AdminOrderStatusUpdate(SQLModel):
     status: str
 
 
+class AdminArticleUpdate(SQLModel):
+    name: Optional[str] = None
+    price: Optional[int] = None
+    category: Optional[str] = None
+    description: Optional[str] = None
+    photo_url: Optional[str] = None
+    photos: Optional[list[str]] = None
+    shop_id: Optional[int] = None
+    shop_name: Optional[str] = None
+    shop_phone: Optional[str] = None
+    shop_address: Optional[str] = None
+    negotiable: Optional[bool] = None
+
+
+class AdminShopUpdate(SQLModel):
+    name: Optional[str] = None
+    owner_name: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    email: Optional[str] = None
+    is_open: Optional[bool] = None
+
+
 def is_admin_credentials(email: Optional[str], password: Optional[str]) -> bool:
     if not email or not password or not ADMIN_EMAIL or not ADMIN_PASSWORD:
         return False
@@ -251,6 +274,29 @@ def admin_create_shop(body: AdminShopCreate, session: Session = Depends(get_sess
     return shop
 
 
+@router.put("/shops/{shop_id}")
+def admin_update_shop(shop_id: int, body: AdminShopUpdate, session: Session = Depends(get_session)):
+    shop = session.get(Shop, shop_id)
+    if not shop:
+        raise HTTPException(404, "Boutique introuvable")
+    if body.name is not None and body.name.strip():
+        shop.name = body.name.strip()
+    if body.owner_name is not None:
+        shop.owner_name = body.owner_name.strip() or "Administrateur"
+    if body.phone is not None and body.phone.strip():
+        shop.phone = body.phone.strip()
+    if body.address is not None:
+        shop.address = body.address.strip() or "Abidjan"
+    if body.email is not None:
+        shop.email = body.email.strip().lower() if body.email.strip() else None
+    if body.is_open is not None:
+        shop.is_open = body.is_open
+    session.add(shop)
+    session.commit()
+    session.refresh(shop)
+    return shop
+
+
 @router.delete("/shops/{shop_id}", status_code=204)
 def admin_delete_shop(shop_id: int, session: Session = Depends(get_session)):
     shop = session.get(Shop, shop_id)
@@ -312,6 +358,64 @@ def admin_create_article(body: AdminArticleCreate, session: Session = Depends(ge
         photos_json=json.dumps(photos_list) if photos_list else None,
         color="#2C64E8",
     )
+    session.add(article)
+    session.commit()
+    session.refresh(article)
+    return article
+
+
+@router.put("/articles/{article_id}")
+def admin_update_article(article_id: int, body: AdminArticleUpdate, session: Session = Depends(get_session)):
+    article = session.get(Article, article_id)
+    if not article:
+        raise HTTPException(404, "Article introuvable")
+    if body.category is not None:
+        if body.category not in CATEGORIES:
+            raise HTTPException(422, f"Catégorie invalide. Choisir parmi : {CATEGORIES}")
+        article.category = body.category
+    if body.name is not None and body.name.strip():
+        article.name = body.name.strip()
+    if body.price is not None:
+        if body.price <= 0:
+            raise HTTPException(422, "Le prix doit être supérieur à 0")
+        article.price = body.price
+    if body.description is not None:
+        article.description = body.description.strip() or None
+    if body.negotiable is not None:
+        article.negotiable = body.negotiable
+
+    if body.photos is not None:
+        photos_list = [p.strip() for p in body.photos if p and p.strip()]
+        article.photos_json = json.dumps(photos_list) if photos_list else None
+        article.photo_url = photos_list[0] if photos_list else None
+    elif body.photo_url is not None:
+        cleaned = body.photo_url.strip()
+        article.photo_url = cleaned or None
+        article.photos_json = json.dumps([cleaned]) if cleaned else None
+
+    if body.shop_id is not None:
+        target_shop = session.get(Shop, body.shop_id)
+        if not target_shop:
+            raise HTTPException(404, "Boutique introuvable")
+        article.shop_id = target_shop.id
+    elif body.shop_name is not None and body.shop_name.strip():
+        target_name = body.shop_name.strip()
+        target_shop = session.exec(select(Shop).where(Shop.name == target_name)).first()
+        if not target_shop:
+            target_shop = Shop(
+                name=target_name,
+                owner_name="Super Administrateur",
+                phone=(body.shop_phone or "0700000001").strip(),
+                address=(body.shop_address or "Cocody, Abidjan").strip(),
+                lat=DEFAULT_LAT + 0.002,
+                lng=DEFAULT_LNG + 0.002,
+                is_open=True,
+            )
+            session.add(target_shop)
+            session.commit()
+            session.refresh(target_shop)
+        article.shop_id = target_shop.id
+
     session.add(article)
     session.commit()
     session.refresh(article)
