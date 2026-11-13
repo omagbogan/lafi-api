@@ -42,6 +42,7 @@ class AdminArticleCreate(SQLModel):
     category: str
     description: Optional[str] = None
     photo_url: Optional[str] = None
+    photos: Optional[list[str]] = None
     shop_id: Optional[int] = None
     shop_name: Optional[str] = "Boutique Officielle Lafi"
     shop_phone: Optional[str] = "0700000001"
@@ -295,7 +296,11 @@ def admin_create_article(body: AdminArticleCreate, session: Session = Depends(ge
             session.commit()
             session.refresh(shop)
 
-    photos_list = [body.photo_url] if body.photo_url else []
+    photos_list = [p.strip() for p in (body.photos or []) if p and p.strip()]
+    if not photos_list and body.photo_url and body.photo_url.strip():
+        photos_list = [body.photo_url.strip()]
+    main_photo = photos_list[0] if photos_list else None
+
     article = Article(
         shop_id=shop.id,
         name=body.name.strip(),
@@ -303,7 +308,7 @@ def admin_create_article(body: AdminArticleCreate, session: Session = Depends(ge
         category=body.category,
         description=body.description.strip() if body.description else f"{body.name.strip()} disponible immédiatement chez {shop.name} à Abidjan.",
         negotiable=body.negotiable,
-        photo_url=body.photo_url,
+        photo_url=main_photo,
         photos_json=json.dumps(photos_list) if photos_list else None,
         color="#2C64E8",
     )
