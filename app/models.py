@@ -13,13 +13,13 @@ def now_ms() -> int:
 class Shop(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
-    phone: str = Field(index=True)
+    phone: str = Field(index=True, unique=True)
     lat: float
     lng: float
     is_open: bool = True
     owner_name: Optional[str] = None
     address: Optional[str] = None
-    email: Optional[str] = Field(default=None, index=True)
+    email: Optional[str] = Field(default=None, index=True, unique=True)
     password_hash: Optional[str] = None
 
 
@@ -96,7 +96,7 @@ class OrderItem(SQLModel, table=True):
     __tablename__ = "order_items"
     id: Optional[int] = Field(default=None, primary_key=True)
     order_id: int = Field(foreign_key="orders.id", index=True)
-    article_id: int
+    article_id: int = Field(foreign_key="article.id", index=True)
     name: str
     price: int
     qty: int
