@@ -1,6 +1,11 @@
+import os
+from pathlib import Path
+
 from sqlmodel import Session, SQLModel, create_engine
 
-engine = create_engine("sqlite:///lafi.db", connect_args={"check_same_thread": False})
+DB_PATH = Path(os.getenv("DB_PATH", "lafi.db"))
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
 
 
 def run_migrations():
