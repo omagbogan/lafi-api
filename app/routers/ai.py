@@ -3,11 +3,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlmodel import Session, SQLModel
 
-from ..agent import run_agent
+from ..agent import find_product_from_image, generate_product_description, run_agent
 from ..category_model import predict_category
 from ..db import get_session
 from ..geo import DEFAULT_LAT, DEFAULT_LNG
-from ..image_model import predict_image
+from ..image_model import enhance_image, predict_image
 from ..models import ArticleOut
 
 router = APIRouter(prefix="/ai")
@@ -68,10 +68,16 @@ def category_from_image(file: UploadFile = File(...)):
 
 # ---------- Assistant / Agent IA conversationnel (Bloc 4) ----------
 
+class AssistantTurn(SQLModel):
+    role: str
+    content: str
+
+
 class AssistantRequest(SQLModel):
     message: str
     lat: float = DEFAULT_LAT
     lng: float = DEFAULT_LNG
+    history: list[AssistantTurn] = []
 
 
 class AssistantResponse(SQLModel):
@@ -84,11 +90,75 @@ class AssistantResponse(SQLModel):
 
 @router.post("/assistant", response_model=AssistantResponse)
 def ask_assistant(data: AssistantRequest, session: Session = Depends(get_session)):
-    result = run_agent(data.message, session, data.lat, data.lng)
+    history_dicts = [{"role": t.role, "content": t.content} for t in data.history]
+    result = run_agent(data.message, session, data.lat, data.lng, history=history_dicts)
     return AssistantResponse(
         reply=result["reply"],
         recommended_articles=result["recommended_articles"],
         intent=result["intent"],
-        source="agent-local",
+        source=result.get("source", "agent-local"),
         accepte=True,
     )
+
+
+@router.post("/assistant-image", response_model=AssistantResponse)
+def ask_assistant_image(file: UploadFile = File(...), session: Session = Depends(get_session)):
+    data = file.file.read()
+    if len(data) > 8_000_000:
+        raise HTTPException(413, "Image trop lourde (8 Mo maximum).")
+    result = find_product_from_image(data, session)
+    return AssistantResponse(
+        reply=result["reply"],
+        recommended_articles=result["recommended_articles"],
+        intent=result["intent"],
+        source=result.get("source", "agent-local-vision"),
+        accepte=True,
+    )
+
+
+# ---------- Générateur de description commerciale IA (Commerçant) ----------
+
+class DescriptionRequest(SQLModel):
+    title: str
+    category: Optional[str] = None
+    price: Optional[int] = None
+    negotiable: bool = False
+
+
+class DescriptionResponse(SQLModel):
+    description: str
+    source: str = "local-template"
+    accepte: bool = True
+
+
+@router.post("/generate-description", response_model=DescriptionResponse)
+def generate_description_route(data: DescriptionRequest):
+    if not data.title.strip():
+        raise HTTPException(422, "Le titre de l'article est requis pour générer une description.")
+    result = generate_product_description(
+        title=data.title,
+        category=data.category,
+        price=data.price,
+        negotiable=data.negotiable,
+    )
+    return DescriptionResponse(**result)
+
+
+# ---------- Amélioration et recadrage photo réel (Pillow) ----------
+
+class ImproveImageResponse(SQLModel):
+    url: str
+    source: str = "pillow-enhancer"
+    accepte: bool = True
+
+
+@router.post("/improve-image", response_model=ImproveImageResponse)
+def improve_image_route(file: UploadFile = File(...)):
+    data = file.file.read()
+    if len(data) > 8_000_000:
+        raise HTTPException(413, "Image trop lourde (8 Mo maximum).")
+    try:
+        result = enhance_image(data)
+        return ImproveImageResponse(**result)
+    except ValueError as error:
+        raise HTTPException(422, str(error))

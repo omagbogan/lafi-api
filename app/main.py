@@ -7,7 +7,7 @@ from sqlmodel import Session
 
 from .config import UPLOAD_DIR
 from .db import engine, init_db
-from .routers import ai, articles, auth, orders, uploads
+from .routers import admin, ai, articles, auth, orders, uploads
 from .seed import seed
 
 from .category_model import load_model
@@ -41,6 +41,7 @@ app.include_router(articles.router)
 app.include_router(orders.router)
 app.include_router(uploads.router)
 app.include_router(ai.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

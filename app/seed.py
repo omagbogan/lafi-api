@@ -4,8 +4,14 @@ from .geo import DEFAULT_LAT, DEFAULT_LNG
 from .models import Article, Shop
 
 
-def seed(session: Session) -> None:
-    """Remplit la base avec les données de démonstration, une seule fois."""
+def seed(session: Session, force: bool = False) -> None:
+    """
+    Ne remplit la base de test QUE si force=True (utilisé pour les tests unitaires).
+    Par défaut, la base reste propre et vide pour les vraies données de l'utilisateur.
+    """
+    if not force:
+        return
+
     if session.exec(select(Shop)).first():
         return
 
